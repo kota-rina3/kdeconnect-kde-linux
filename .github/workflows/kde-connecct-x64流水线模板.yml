@@ -68,9 +68,13 @@ jobs:
           cd ..
         }
 
+        build_dep extra-cmake-modules "https://download.kde.org/stable/frameworks/6.11/extra-cmake-modules-6.11.0.tar.xz"
         build_dep kcontacts       "https://download.kde.org/stable/frameworks/6.6/kcontacts-6.6.0.tar.xz"
         build_dep kpeople         "https://download.kde.org/stable/frameworks/6.6/kpeople-6.6.0.tar.xz"
         build_dep kirigami-addons "https://download.kde.org/stable/kirigami-addons/kirigami-addons-1.2.1.tar.xz"
+        # ki18n 6.11+：kdeconnect master 链接 KF6::I18nQml（src/i18n-qml 为 6.11.0 引入），
+        # crimson 的 libkf6i18n-dev 6.6.0 无此目标，补建新版；ECM 需同步升到 >= 6.11
+        build_dep ki18n           "https://download.kde.org/stable/frameworks/6.11/ki18n-6.11.0.tar.xz"
 
         # libei >= 1.6（mousepad 插件 REQUIRED；crimson 仓库只有 1.3.901，版本不够）
         echo "===== 构建 libei ====="
