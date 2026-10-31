@@ -52,6 +52,9 @@ jobs:
         # 注意：invent.kde.org 的 /-/archive/ 端点会返回反爬 HTML 而非压缩包，
         # 必须用 download.kde.org 官方 release tarball
         mkdir -p /tmp/deps && cd /tmp/deps
+        # DEPS_STAGE：依赖模块的暂存安装树（保留 /usr 前缀布局），供最后打包
+        DEPS_STAGE="$GITHUB_WORKSPACE/stage-deps"
+        mkdir -p "$DEPS_STAGE"
 
         build_dep () {
           local name="$1" url="$2"
@@ -65,6 +68,7 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=/usr
           cmake --build build -j$(nproc)
           cmake --install build
+          DESTDIR="$DEPS_STAGE" cmake --install build
           cd ..
         }
 
@@ -83,7 +87,17 @@ jobs:
         meson setup build --prefix=/usr -Dliboeffis=disabled -Dtests=disabled
         ninja -C build -j$(nproc)
         ninja -C build install
+        DESTDIR="$DEPS_STAGE" ninja -C build install
         cd ..
+
+        echo "===== 校验 stage-deps ====="
+        find "$DEPS_STAGE/usr/lib" -maxdepth 3 \( -name "libKF6I18nQml*" -o -name "libKF6People*" \
+          -o -name "libKF6Contacts*" -o -name "libei*" -o -name "libKF6KirigamiAddons*" \) | sort
+        for f in libKF6I18nQml.so.6 libKF6People.so.6 libKF6Contacts.so.6 libei.so.1; do
+          test -f "$DEPS_STAGE/usr/lib/x86_64-linux-gnu/$f" \
+            || { echo "!! stage-deps 缺少 $f"; exit 1; }
+        done
+        echo "stage-deps 校验通过"
 
     - name: 编译
       continue-on-error: false
@@ -101,3 +115,9 @@ jobs:
       with:
         name: kdeconnect-x64
         path: ./install
+
+    - name: 上传依赖模块
+      uses: actions/upload-artifact@v4
+      with:
+        name: kdeconnect-x64-deps
+        path: ./stage-deps
