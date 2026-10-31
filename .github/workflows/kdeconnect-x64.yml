@@ -1,0 +1,85 @@
+name: kdeconnect-x64
+
+on:
+  workflow_dispatch:
+    branch: master
+
+jobs:
+  build:
+    name: 编译构建
+    runs-on: ubuntu-latest
+    container: linuxdeepin/deepin:crimson-amd64-v1.6.0
+
+    steps:
+    - name: 检查代码
+      uses: actions/checkout@v4
+      with:
+        repository: KDE/kdeconnect-kde
+        ref: master
+
+    - name: 安装所需依赖
+      run: |
+        apt update && apt upgrade -y
+        apt install -y \
+          build-essential cmake ninja-build git gettext pkg-config \
+          qt6-base-dev qt6-base-dev-tools qt6-base-private-dev \
+          qt6-declarative-dev qt6-declarative-private-dev \
+          qt6-multimedia-dev qt6-wayland-dev \
+          libkf6config-dev libkf6configwidgets-dev libkf6coreaddons-dev \
+          libkf6i18n-dev libkf6dbusaddons-dev libkf6iconthemes-dev \
+          libkf6notifications-dev libkf6kio-dev libkf6kcmutils-dev \
+          libkf6service-dev libkf6windowsystem-dev libkf6widgetsaddons-dev \
+          libkf6crash-dev libkf6guiaddons-dev libkf6itemmodels-dev \
+          libkf6itemviews-dev libkf6package-dev libkf6solid-dev \
+          libkf6colorscheme-dev libkf6statusnotifieritem-dev \
+          libkf6pulseaudioqt-dev libkf6codecs-dev \
+          libkirigami-dev \
+          libqca-qt6-dev libqca-qt6-plugins \
+          libfakekey-dev libxkbcommon-dev libxtst-dev libx11-dev \
+          libdbus-1-dev libssl-dev libpulse-dev \
+          libwayland-dev wayland-protocols plasma-wayland-protocols
+
+    - name: 安装模块
+      run: |
+        # crimson 仓库缺失 3 个 REQUIRED 依赖，从源码补建（版本对齐 KF6 6.6 / Qt6 6.8）：
+        #   KContacts      6.6.0  -> KPeople 的硬依赖
+        #   KPeople        6.6.0  -> kdeconnect REQUIRED (KF6 People)
+        #   KirigamiAddons 1.2.1  -> kdeconnect REQUIRED (KF6KirigamiAddons >= 0.11)
+        # 更高版本要求更新的 KF6（如 kirigami-addons 1.12 要求 KF6 >= 6.16），故锁定 1.2.1
+        mkdir -p /tmp/deps && cd /tmp/deps
+
+        build_dep () {
+          local name="$1" url="$2"
+          echo "===== 构建 $name ====="
+          curl -fsSL -o "$name.tar.xz" "$url"
+          tar xf "$name.tar.xz"
+          cd "$name"*
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=OFF \
+            -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --build build -j$(nproc)
+          cmake --install build
+          cd ..
+        }
+
+        build_dep kcontacts      "https://invent.kde.org/frameworks/kcontacts/-/archive/v6.6.0/kcontacts-v6.6.0.tar.xz"
+        build_dep kpeople        "https://invent.kde.org/frameworks/kpeople/-/archive/v6.6.0/kpeople-v6.6.0.tar.xz"
+        build_dep kirigami-addons "https://invent.kde.org/libraries/kirigami-addons/-/archive/v1.2.1/kirigami-addons-v1.2.1.tar.xz"
+
+    - name: 编译
+      continue-on-error: false
+      run: |
+        cmake -S . -B build -G Ninja \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DBUILD_TESTING=OFF \
+          -DCMAKE_INSTALL_PREFIX=./install \
+          -Wno-dev
+        cmake --build build -j$(nproc)
+        cmake --install build
+
+    - name: 上传构建产物
+      uses: actions/upload-artifact@v4
+      with:
+        name: kdeconnect-x64
+        path: ./install
