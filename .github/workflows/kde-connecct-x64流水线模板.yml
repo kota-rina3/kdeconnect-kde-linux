@@ -22,6 +22,7 @@ jobs:
         apt update && apt upgrade -y
         apt install -y \
           build-essential cmake ninja-build git gettext pkg-config \
+          extra-cmake-modules \
           xz-utils ca-certificates curl \
           qt6-base-dev qt6-base-dev-tools qt6-base-private-dev \
           qt6-declarative-dev qt6-declarative-private-dev \
@@ -34,6 +35,7 @@ jobs:
           libkf6itemviews-dev libkf6package-dev libkf6solid-dev \
           libkf6colorscheme-dev libkf6statusnotifieritem-dev \
           libkf6pulseaudioqt-dev libkf6codecs-dev \
+          libkf6qqc2desktopstyle-dev \
           libkirigami-dev \
           libqca-qt6-dev libqca-qt6-plugins \
           libfakekey-dev libxkbcommon-dev libxtst-dev libx11-dev \
